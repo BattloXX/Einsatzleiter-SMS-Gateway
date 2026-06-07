@@ -79,15 +79,12 @@ async def _heartbeat(ws) -> None:
 async def run_once() -> None:
     """Stellt eine WS-Verbindung her, handelt auth + loop, bis die Verbindung bricht."""
     url = _build_ws_url()
-    extra_headers = {"Authorization": f"Bearer {settings.GATEWAY_TOKEN}"}
-    # '?token=' als Fallback (websockets sendet custom headers nur bei HTTP-Upgrade)
     url_with_token = f"{url}?token={settings.GATEWAY_TOKEN}"
 
     logger.info("Verbinde mit %s", f"{'wss' if settings.GATEWAY_USE_TLS else 'ws'}://{settings.GATEWAY_DOMAIN}/ws/sms-gateway")
 
     async with websockets.connect(
         url_with_token,
-        additional_headers=extra_headers,
         ping_interval=None,  # wir machen Heartbeat selbst
         open_timeout=15,
         close_timeout=5,
