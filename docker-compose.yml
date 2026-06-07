@@ -1,0 +1,11 @@
+services:
+  sms-gateway:
+    build: .
+    image: einsatzleiter-sms-gateway:latest
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      # Kann hier überschrieben werden, sonst aus .env
+      PYTHONUNBUFFERED: "1"
+    # Kein Port-Mapping nötig: Container verbindet sich ausgehend zur Haupt-App
