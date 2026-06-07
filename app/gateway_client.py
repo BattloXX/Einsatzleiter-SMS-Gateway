@@ -66,16 +66,6 @@ async def _handle_message(ws, raw: str) -> None:
         logger.debug("Unbekannter Nachrichtentyp: %s", msg_type)
 
 
-async def _heartbeat(ws) -> None:
-    """Sendet regelmäßig Pings, damit die Verbindung als aktiv gilt."""
-    while True:
-        await asyncio.sleep(settings.HEARTBEAT_INTERVAL)
-        try:
-            await ws.send(json.dumps({"type": MSG_PING}))
-        except Exception:
-            return
-
-
 async def run_once() -> None:
     """Stellt eine WS-Verbindung her, handelt auth + loop, bis die Verbindung bricht."""
     url = _build_ws_url()
@@ -85,7 +75,8 @@ async def run_once() -> None:
 
     async with websockets.connect(
         url_with_token,
-        ping_interval=None,  # wir machen Heartbeat selbst
+        ping_interval=20,   # WebSocket-Protokoll-Ping alle 20 s (hält NGINX/Azure-TCP am Leben)
+        ping_timeout=10,    # Trennen wenn kein Pong innerhalb 10 s
         open_timeout=15,
         close_timeout=5,
     ) as ws:
@@ -94,18 +85,11 @@ async def run_once() -> None:
         await ws.send(json.dumps(hello))
         logger.info("Verbunden — warte auf SMS-Jobs")
 
-        heartbeat_task = asyncio.create_task(_heartbeat(ws))
         try:
             async for raw in ws:
                 await _handle_message(ws, raw)
         except ConnectionClosed as exc:
             logger.warning("Verbindung getrennt: %s", exc)
-        finally:
-            heartbeat_task.cancel()
-            try:
-                await heartbeat_task
-            except asyncio.CancelledError:
-                pass
 
 
 async def run_forever(stop_event: asyncio.Event) -> None:
