@@ -96,6 +96,7 @@ async def run_forever(stop_event: asyncio.Event) -> None:
     """Reconnect-Loop mit exponentiellem Backoff."""
     delay = settings.RECONNECT_INITIAL_DELAY
     while not stop_event.is_set():
+        t0 = asyncio.get_event_loop().time()
         try:
             await run_once()
         except Exception as exc:
@@ -103,6 +104,10 @@ async def run_forever(stop_event: asyncio.Event) -> None:
 
         if stop_event.is_set():
             break
+
+        # Backoff zurücksetzen wenn die Verbindung ≥60 s stabil war
+        if asyncio.get_event_loop().time() - t0 >= 60:
+            delay = settings.RECONNECT_INITIAL_DELAY
 
         logger.info("Reconnect in %.0f s …", delay)
         try:
